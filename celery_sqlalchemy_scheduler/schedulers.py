@@ -98,13 +98,15 @@ class ModelEntry(ScheduleEntry):
             model.last_run_at = self._default_now()
         self.last_run_at = model.last_run_at
 
+        timezone = self.app.timezone
+
         # 因为从数据库读取的 last_run_at 可能没有时区信息，所以这里必须加上时区信息
-        self.last_run_at = self.last_run_at.replace(tzinfo=self.app.timezone)
+        self.last_run_at = maybe_make_aware(self.last_run_at, timezone)
 
         # self.options['expires'] 同理
-        # if 'expires' in self.options:
-        #     expires = self.options['expires']
-        #     self.options['expires'] = expires.replace(tzinfo=self.app.timezone)
+        if 'expires' in self.options:
+            expires = self.options['expires']
+            self.options['expires'] = maybe_make_aware(expires, timezone)
 
     def _disable(self, model):
         model.no_changes = True
@@ -157,8 +159,7 @@ class ModelEntry(ScheduleEntry):
         # The PyTZ datetime must be localised for the Django-Celery-Beat
         # scheduler to work. Keep in mind that timezone arithmatic
         # with a localized timezone may be inaccurate.
-        # return now.tzinfo.localize(now.replace(tzinfo=None))
-        return now.replace(tzinfo=self.app.timezone)
+        return now.tzinfo.localize(now.replace(tzinfo=None))
 
     def __next__(self):
         # should be use `self._default_now()` or `self.app.now()` ?
